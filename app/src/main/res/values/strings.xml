@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Peta Bencana</string>
+    <string name="title_activity_maps">MapsActivity</string>
+    <string name="searchbar_hint">Cari disini...</string>
+    <string name="setting">setting</string>
+    <string name="title_activity_settings">SettingsActivity</string>
+    <string name="informasi_bencana_terkini">Informasi Bencana Terkini</string>
+    <string name="dark_mode">Dark Mode</string>
+</resources>
