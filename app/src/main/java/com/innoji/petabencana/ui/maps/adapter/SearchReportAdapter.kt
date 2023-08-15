@@ -51,7 +51,6 @@ class SearchReportAdapter(private val searchReport: ArrayList<GeometriesItem>): 
         notifyDataSetChanged()
     }
 
-
     interface OnItemClickCallback {
         fun onItemClicked(data: GeometriesItem)
     }

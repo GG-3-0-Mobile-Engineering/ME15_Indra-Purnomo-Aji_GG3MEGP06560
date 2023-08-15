@@ -5,9 +5,9 @@ import android.content.Intent
 import android.graphics.Color
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatDelegate
@@ -15,7 +15,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 
@@ -29,29 +28,25 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.button.MaterialButton
 import com.innoji.petabencana.R
 import com.innoji.petabencana.data.network.response.GeometriesItem
-import com.innoji.petabencana.data.network.response.Province
 import com.innoji.petabencana.databinding.ActivityMapsBinding
-import com.innoji.petabencana.helper.DisasterHelper
 import com.innoji.petabencana.helper.ProvinceHelper
 import com.innoji.petabencana.helper.SettingPreferences
 import com.innoji.petabencana.helper.ViewModelFactory
 import com.innoji.petabencana.ui.maps.adapter.SearchReportAdapter
 import com.innoji.petabencana.ui.setting.SettingActivity
 import com.innoji.petabencana.ui.setting.SettingViewModel
-import kotlinx.coroutines.launch
+import dagger.hilt.android.AndroidEntryPoint
 import org.apache.commons.text.WordUtils
 
-private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
+    private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
     private lateinit var mMap: GoogleMap
     private lateinit var binding: ActivityMapsBinding
     private val viewModel: MapsViewModel by viewModels()
     private var disaster: String? = null
-
     private lateinit var adapter: SearchReportAdapter
-
-
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -86,8 +81,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
 
-
-
     private fun searchBar(){
         with(binding) {
             searchBar.setOnMenuItemClickListener{menuItem ->
@@ -104,10 +97,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             searchView.editText.setOnEditorActionListener { _, _, _ ->
                 searchBar.text = searchView.text
                 searchView.hide()
-                viewModelSetup()
-//                Toast.makeText(this@MapsActivity, searchView.text, Toast.LENGTH_SHORT).show()
+                if(searchView.text != null) {
+                    viewModelSetup()
+                }
                 false
             }
+
         }
     }
 
@@ -120,6 +115,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             override fun onStateChanged(bottomSheet: View, newState: Int) {
                 when(newState){
                     BottomSheetBehavior.STATE_EXPANDED -> {
+
+                    }
+                    BottomSheetBehavior.STATE_HALF_EXPANDED -> {
 
                     }
                     else -> {
@@ -135,7 +133,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun viewModelSetup(){
-        var dataAdmin: String? = null
+        val dataAdmin: String?
 
         dataAdmin = binding.searchView.text.toString()
         val dataAdminCapital = WordUtils.capitalizeFully(dataAdmin)
@@ -148,7 +146,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 selectedValueKey = province.valueKey
                 break
             }else{
-                selectedValueKey = dataAdmin
+                selectedValueKey = dataAdminCapital
             }
         }
 
@@ -167,14 +165,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
 
         viewModel.reportData.observe(this){reportData ->
-            if(reportData.isNotEmpty()){
+            if(reportData != null) {
                 setDataSearchReport(reportData)
-            }else{
-                Toast.makeText(this@MapsActivity, "Data Kosong", Toast.LENGTH_SHORT).show()
-                val listReport = ArrayList<GeometriesItem>()
-                adapter = SearchReportAdapter(listReport)
-                mMap.clear()
+            }
+        }
+
+        viewModel.returnResponse.observe(this){
+            if(it == 400){
                 adapter.clear()
+                val imgNoData = findViewById<ImageView>(R.id.ivNoData)
+                imgNoData.visibility = View.VISIBLE
+                Toast.makeText(this, "data tidak ditemukan", Toast.LENGTH_SHORT).show()
+                mMap.clear()
+            }else if (it == 200){
+                val imgNoData = findViewById<ImageView>(R.id.ivNoData)
+                imgNoData.visibility = View.GONE
             }
         }
 
@@ -184,7 +189,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun setDataSearchReport(searchReport: List<GeometriesItem>){
-
 
         val listReport = ArrayList<GeometriesItem>()
         adapter = SearchReportAdapter(listReport)
@@ -196,8 +200,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             mMap.addMarker(MarkerOptions().position(latLng).title(report.properties.disasterType))
             listReport.add(report)
         }
-
-//        adapter.addAll(listReport)
 
         val firstCoordinate = searchReport[0]
         val latLng = LatLng(firstCoordinate.coordinates[1], firstCoordinate.coordinates[0])
